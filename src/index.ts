@@ -9,6 +9,7 @@ if (major < 18) {
 
 import { Command } from 'commander';
 import { setQuiet } from './util/log.js';
+import { requireGit } from './util/deps.js';
 import { registerInit } from './commands/init.js';
 import { registerApply } from './commands/apply.js';
 import { registerStatus } from './commands/status.js';
@@ -25,9 +26,13 @@ program
   .description('Sync ~/.claude/ config across environments via Git + SOPS')
   .version('0.1.0')
   .option('-q, --quiet', 'Suppress informational output')
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', async (thisCommand, actionCommand) => {
     const opts = thisCommand.opts();
     if (opts.quiet) setQuiet(true);
+    // Require git for all commands except doctor
+    if (actionCommand.name() !== 'doctor') {
+      await requireGit();
+    }
   });
 
 registerInit(program);

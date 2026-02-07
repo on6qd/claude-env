@@ -8,6 +8,7 @@ import { CLAUDE_DIR, CONFIG_FILE, SECRETS_FILE, AGE_KEY_FILE } from '../util/pat
 import { git, isGitRepo, hasRemote, isClean } from '../util/git.js';
 import { checkSopsBinaries, getAgePublicKey } from '../util/sops.js';
 import { info, success, warn, error } from '../util/log.js';
+import { installHint } from '../util/deps.js';
 
 const execFile = promisify(execFileCb);
 
@@ -150,8 +151,8 @@ export function registerInit(program: Command): void {
       const bins = await checkSopsBinaries();
       let ageAvailable = false;
 
-      if (!bins.sops) warn('sops not found. Install sops for secrets support.');
-      if (!bins.age) warn('age not found. Install age for secrets support.');
+      if (!bins.sops) warn(`sops not found — needed for secrets support.\n  ${installHint('sops')}`);
+      if (!bins.age) warn(`age not found — needed for secrets support.\n  ${installHint('age')}`);
 
       if (bins.sops && bins.age) {
         ageAvailable = true;
@@ -217,6 +218,14 @@ export function registerInit(program: Command): void {
         success('Created initial commit');
       }
 
-      info('\nclaude-env setup complete! Run "claude-env doctor" to verify.');
+      // Summary
+      info('\n── Setup complete ──');
+      if (!bins.sops || !bins.age) {
+        info('Install sops + age to enable encrypted secrets.');
+      }
+      if (!ageAvailable) {
+        info('If joining an existing team, copy your age key to ~/.claude-env-key.txt');
+      }
+      info('Run "claude-env doctor" to verify your setup.');
     });
 }
