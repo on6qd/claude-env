@@ -1,0 +1,25 @@
+{
+  "name": "claude-env",
+  "version": "0.1.0",
+  "description": "Sync ~/.claude/ config across environments via Git + SOPS",
+  "type": "module",
+  "bin": {
+    "claude-env": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
