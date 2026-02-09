@@ -66,6 +66,13 @@ sudo dnf install git
 npm install -g on6qd/claude-env
 ```
 
+> **Windows users:** `npm install -g` from a git URL may create a broken symlink.
+> If `claude-env` fails with `MODULE_NOT_FOUND`, clone and install locally instead:
+> ```bash
+> git clone https://github.com/on6qd/claude-env.git
+> npm install -g ./claude-env
+> ```
+
 ## Quick start
 
 ```bash
