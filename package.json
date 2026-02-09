@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "postinstall": "node -e \"if(!require('fs').existsSync(require('path').join(__dirname,'dist','index.js'))){console.error('\\n  claude-env: dist/index.js is missing (known Windows npm issue).\\n  Fix: git clone https://github.com/on6qd/claude-env.git && npm install -g ./claude-env\\n');process.exit(1)}\""
   },
   "engines": {
     "node": ">=18"
