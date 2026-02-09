@@ -102,17 +102,16 @@ The age key file lives outside the repo and must be transferred out-of-band (e.g
 | Command | Description |
 |---------|-------------|
 | `claude-env init` | Interactive first-time setup |
-| `claude-env apply` | Parse, resolve, and display config (v0.1: validation only) |
-| `claude-env status` | Show resolved config for current platform |
+| `claude-env apply` | Resolve config and write MCP servers to `~/.claude.json` (local only) |
+| `claude-env sync` | Pull from remote, apply config, commit managed files, and push |
 | `claude-env doctor` | Run diagnostic checks |
-| `claude-env pull` | Pull latest config from remote (rebase) |
-| `claude-env push` | Stage, commit, and push config changes |
-| `claude-env sync` | Sync config from remote (shorthand for pull) |
 | `claude-env secret edit` | Edit secrets file in `$EDITOR` via sops |
 | `claude-env secret set <key>` | Set a secret value |
 | `claude-env secret list` | List secret keys (not values) |
 
 All commands accept `-q` / `--quiet` to suppress informational output.
+
+`apply` is a safe local-only operation — it never commits or pushes. Use `sync` when you want to pull, apply, and push in one step. Both support `--dry-run` to preview changes.
 
 ## Configuration
 
@@ -153,6 +152,16 @@ mcp_servers:
 ### `secrets.enc.yaml` (committed, encrypted)
 
 SOPS-encrypted key-value pairs. Referenced in config as `${secret:KEY}`. Managed with `claude-env secret set` / `claude-env secret edit`.
+
+## Variable expansion
+
+Variables are expanded in a single pass in this order:
+
+1. **Built-ins**: `${HOME}`, `${PLATFORM}`
+2. **Secrets**: `${secret:KEY}` — decrypted from `secrets.enc.yaml`
+3. **User variables**: defined in `claude-env.yaml` / `settings.local.yaml`
+4. **Explicit env**: `${env:VARNAME}` — reads from the host environment
+5. **Env fallback**: bare `${VARNAME}` resolves from the environment with a warning — prefer the explicit `${env:VARNAME}` form
 
 ## Troubleshooting
 
