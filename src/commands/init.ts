@@ -1,13 +1,14 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readdir } from 'node:fs/promises';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { CLAUDE_DIR, CONFIG_FILE, SECRETS_FILE, AGE_KEY_FILE } from '../util/paths.js';
 import { git, isGitRepo, hasRemote, isClean, ensureSshRemote, httpsToSsh } from '../util/git.js';
-import { checkSopsBinaries, getAgePublicKey } from '../util/sops.js';
-import { info, success, warn, error } from '../util/log.js';
+import { checkSopsBinaries, getAgePublicKey, encryptYamlToFile } from '../util/sops.js';
+import { info, success, warn, error, die } from '../util/log.js';
 import { installHint } from '../util/deps.js';
 
 const execFile = promisify(execFileCb);
@@ -85,6 +86,11 @@ function ask(question: string): Promise<string> {
   });
 }
 
+const VALID_GIT_URL = /^(git@[^:]+:.+|ssh:\/\/.+|https?:\/\/.+)$/;
+
+function isValidGitUrl(url: string): boolean {
+  return VALID_GIT_URL.test(url);
+}
 
 export function registerInit(program: Command): void {
   program
@@ -103,6 +109,9 @@ export function registerInit(program: Command): void {
       } else {
         const cloneUrl = await ask('Git repo SSH URL to clone into ~/.claude/ (or press Enter to init fresh): ');
         if (cloneUrl) {
+          if (!isValidGitUrl(cloneUrl)) {
+            die('Invalid Git URL. Expected git@host:path, ssh://, or https:// format.');
+          }
           info('Cloning...');
           // Clone into a temp dir, then move contents
           const tmpDir = `${CLAUDE_DIR}/.clone-tmp`;
@@ -110,8 +119,12 @@ export function registerInit(program: Command): void {
             await execFile('git', ['clone', cloneUrl, tmpDir]);
             // Move .git from temp to CLAUDE_DIR
             await execFile('mv', ['-f', `${tmpDir}/.git`, `${CLAUDE_DIR}/.git`]);
-            // Copy files (excluding .git)
-            await execFile('bash', ['-c', `cp -rn "${tmpDir}"/* "${CLAUDE_DIR}/" 2>/dev/null || true`]);
+            // Copy files (excluding .git) without shell interpolation
+            const entries = await readdir(tmpDir);
+            for (const entry of entries) {
+              if (entry === '.git') continue;
+              await execFile('cp', ['-Rn', join(tmpDir, entry), join(CLAUDE_DIR, entry)]).catch(() => {});
+            }
             await execFile('rm', ['-rf', tmpDir]);
             await git('checkout', '--', '.');
             success('Cloned into ~/.claude/');
@@ -133,6 +146,9 @@ export function registerInit(program: Command): void {
       if (!(await hasRemote())) {
         let remoteUrl = await ask('Remote SSH URL for origin (or press Enter to skip): ');
         if (remoteUrl) {
+          if (!isValidGitUrl(remoteUrl)) {
+            die('Invalid Git URL. Expected git@host:path, ssh://, or https:// format.');
+          }
           // Convert HTTPS to SSH if user pasted an HTTPS URL
           const converted = httpsToSsh(remoteUrl);
           if (converted) {
@@ -210,23 +226,20 @@ export function registerInit(program: Command): void {
 
       // 7. Create empty secrets.enc.yaml if sops+age available
       if (ageAvailable && !existsSync(SECRETS_FILE)) {
-        // Create a minimal encrypted file
         try {
-          await writeFile(SECRETS_FILE, '{}', 'utf-8');
-          await execFile('sops', ['--encrypt', '--in-place', SECRETS_FILE], {
-            env: { ...process.env, SOPS_AGE_KEY_FILE: AGE_KEY_FILE },
-          });
+          await encryptYamlToFile('{}', SECRETS_FILE);
           success('Created empty secrets.enc.yaml');
         } catch (e) {
           warn(`Could not create encrypted secrets file: ${e instanceof Error ? e.message : e}`);
-          // Clean up the plaintext file
-          await writeFile(SECRETS_FILE, '', 'utf-8').catch(() => {});
         }
       }
 
       // 8. Initial commit if there are changes
       if (!(await isClean())) {
-        await git('add', '-A');
+        const filesToAdd = ['.gitignore', 'claude-env.yaml', 'settings.local.example.yaml'];
+        if (existsSync(sopsYamlPath)) filesToAdd.push('.sops.yaml');
+        if (existsSync(SECRETS_FILE)) filesToAdd.push('secrets.enc.yaml');
+        await git('add', ...filesToAdd);
         await git('commit', '-m', 'claude-env init');
         success('Created initial commit');
       }

@@ -44,11 +44,22 @@ export function expandVariables(
       return `\${${expr}}`;
     }
 
+    // Explicit env reference: ${env:VARNAME}
+    if (expr.startsWith('env:')) {
+      const envKey = expr.slice('env:'.length);
+      if (envKey in process.env) return process.env[envKey]!;
+      warn(`Unresolved env variable: ${envKey}`);
+      return `\${${expr}}`;
+    }
+
     // User-defined variables
     if (expr in variables) return variables[expr];
 
-    // Environment variables fallback
-    if (expr in process.env) return process.env[expr]!;
+    // Environment variable fallback (prefer explicit ${env:VARNAME} syntax)
+    if (expr in process.env) {
+      warn(`"\${${expr}}" resolved via env fallback — use "\${env:${expr}}" for explicit env access`);
+      return process.env[expr]!;
+    }
 
     warn(`Unresolved variable: ${expr}`);
     return `\${${expr}}`;

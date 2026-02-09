@@ -5,8 +5,7 @@ import { loadMainConfig, loadLocalConfig } from '../config/loader.js';
 import { resolveConfig } from '../config/resolver.js';
 import type { ResolvedConfig, ResolvedMcpServer } from '../config/types.js';
 import { CLAUDE_JSON } from '../util/paths.js';
-import { git, isClean, hasRemote, ensureSshRemote } from '../util/git.js';
-import { info, success, warn, die } from '../util/log.js';
+import { info, success, die } from '../util/log.js';
 
 export interface ApplyOptions {
   dryRun?: boolean;
@@ -121,31 +120,6 @@ export async function applyAction(opts?: ApplyOptions): Promise<void> {
   await writeFile(CLAUDE_JSON, JSON.stringify(claudeJson, null, 2) + '\n', 'utf-8');
   success(`Wrote ${CLAUDE_JSON}`);
   printSummary(resolved);
-
-  // 6. Auto-commit if anything changed in ~/.claude/
-  if (!(await isClean())) {
-    try {
-      await git('add', '-A');
-      await git('commit', '-m', 'claude-env apply');
-      success('Committed changes');
-    } catch (e) {
-      warn(`Auto-commit failed: ${e instanceof Error ? e.message : e}`);
-    }
-  }
-
-  // 7. Auto-push if remote is configured
-  if (await hasRemote()) {
-    // Ensure SSH remote (convert HTTPS → SSH if needed)
-    const converted = await ensureSshRemote();
-    if (converted) success(`Switched remote to SSH: ${converted}`);
-
-    try {
-      await git('push', '-u', 'origin', 'HEAD');
-      success('Pushed to remote');
-    } catch (e) {
-      warn(`Push failed (will retry next time): ${e instanceof Error ? e.message : e}`);
-    }
-  }
 }
 
 export function registerApply(program: Command): void {

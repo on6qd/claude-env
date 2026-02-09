@@ -1,7 +1,10 @@
 import { execFile as execFileCb, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { SECRETS_FILE, AGE_KEY_FILE } from './paths.js';
 
@@ -44,6 +47,28 @@ export async function decryptSecrets(): Promise<Record<string, string>> {
   }
 }
 
+/**
+ * Encrypt YAML plaintext to a file without ever writing plaintext to the
+ * destination. Uses a temp file in the OS temp directory (outside the repo)
+ * and cleans up on failure.
+ */
+export async function encryptYamlToFile(plaintext: string, destPath: string): Promise<void> {
+  const tmpFile = join(tmpdir(), `.claude-env-${randomBytes(8).toString('hex')}.yaml`);
+  try {
+    await writeFile(tmpFile, plaintext, { encoding: 'utf-8', mode: 0o600 });
+    const pubKey = await getAgePublicKey();
+    if (!pubKey) throw new Error('Age public key not found. Ensure age key exists.');
+    const { stdout } = await execFile('sops', [
+      '--encrypt', '--age', pubKey,
+      '--input-type', 'yaml',
+      tmpFile,
+    ], { env: sopsEnv() });
+    await writeFile(destPath, stdout, 'utf-8');
+  } finally {
+    await unlink(tmpFile).catch(() => {});
+  }
+}
+
 export async function editSecrets(): Promise<void> {
   const child = spawn('sops', [SECRETS_FILE], {
     env: sopsEnv(),
@@ -72,13 +97,8 @@ export async function setSecret(key: string, value: string): Promise<void> {
   // Update the value
   secrets[key] = value;
 
-  // Write plaintext, then encrypt in-place
-  const plaintext = stringifyYaml(secrets);
-  await writeFile(SECRETS_FILE, plaintext, 'utf-8');
-
-  await execFile('sops', ['--encrypt', '--in-place', SECRETS_FILE], {
-    env: sopsEnv(),
-  });
+  // Encrypt via temp file to avoid writing plaintext to the repo
+  await encryptYamlToFile(stringifyYaml(secrets), SECRETS_FILE);
 }
 
 export async function getAgePublicKey(): Promise<string | null> {
