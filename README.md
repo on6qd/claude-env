@@ -11,11 +11,6 @@ Sync your `~/.claude/` configuration across machines using Git and SOPS (age enc
 | **sops** | No | Encrypt/decrypt secrets |
 | **age** | No | Encryption backend for sops |
 
-> **Note:** If installation fails with `'tsc' is not recognized`, install TypeScript first:
-> ```bash
-> npm install -g typescript
-> ```
-
 ### Installing dependencies
 
 <details>
@@ -62,16 +57,20 @@ sudo dnf install git
 
 ## Installation
 
+**macOS / Linux:**
+
 ```bash
 npm install -g on6qd/claude-env
 ```
 
-> **Windows users:** `npm install -g` from a git URL may create a broken symlink.
-> If `claude-env` fails with `MODULE_NOT_FOUND`, clone and install locally instead:
-> ```bash
-> git clone https://github.com/on6qd/claude-env.git
-> npm install -g ./claude-env
-> ```
+**Windows:**
+
+```bash
+git clone https://github.com/on6qd/claude-env.git
+npm install -g ./claude-env
+```
+
+> `npm install -g` from a git URL creates a broken symlink on Windows. Clone first to avoid this.
 
 ## Quick start
 
@@ -92,10 +91,9 @@ After init, run `claude-env doctor` to verify everything is set up correctly.
 
 ## Setting up a second machine
 
-On the new machine:
+On the new machine, install claude-env (see [Installation](#installation)) and then run:
 
 ```bash
-npm install -g on6qd/claude-env
 claude-env init          # paste the clone URL when prompted
 ```
 
