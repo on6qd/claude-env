@@ -11,6 +11,11 @@ Sync your `~/.claude/` configuration across machines using Git and SOPS (age enc
 | **sops** | No | Encrypt/decrypt secrets |
 | **age** | No | Encryption backend for sops |
 
+> **Note:** If installation fails with `'tsc' is not recognized`, install TypeScript first:
+> ```bash
+> npm install -g typescript
+> ```
+
 ### Installing dependencies
 
 <details>
