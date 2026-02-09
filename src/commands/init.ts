@@ -85,6 +85,7 @@ function ask(question: string): Promise<string> {
   });
 }
 
+
 export function registerInit(program: Command): void {
   program
     .command('init')
@@ -100,9 +101,9 @@ export function registerInit(program: Command): void {
       if (await isGitRepo()) {
         info('~/.claude/ is already a git repo');
       } else {
-        const cloneUrl = await ask('Git repo HTTPS URL to clone into ~/.claude/ (or press Enter to init fresh): ');
+        const cloneUrl = await ask('Git repo SSH URL to clone into ~/.claude/ (or press Enter to init fresh): ');
         if (cloneUrl) {
-          info(`Cloning ${cloneUrl}...`);
+          info('Cloning...');
           // Clone into a temp dir, then move contents
           const tmpDir = `${CLAUDE_DIR}/.clone-tmp`;
           try {
@@ -133,13 +134,13 @@ export function registerInit(program: Command): void {
         const remoteUrl = await ask('Remote URL for origin (or press Enter to skip): ');
         if (remoteUrl) {
           await git('remote', 'add', 'origin', remoteUrl);
-          success(`Added remote origin: ${remoteUrl}`);
+          success('Added remote origin');
         } else {
           warn('No remote configured. Run: git -C ~/.claude remote add origin <url>');
         }
       } else {
-        const { stdout } = await git('remote', 'get-url', 'origin');
-        info(`Remote origin: ${stdout}`);
+        const { stdout: currentUrl } = await git('remote', 'get-url', 'origin');
+        info(`Remote origin: ${currentUrl.trim()}`);
       }
 
       // 4. Write .gitignore
@@ -218,8 +219,22 @@ export function registerInit(program: Command): void {
         success('Created initial commit');
       }
 
+      // 9. Check if claude-env is in PATH
+      let inPath = false;
+      try {
+        await execFile('which', ['claude-env']);
+        inPath = true;
+      } catch {
+        // not in PATH
+      }
+
       // Summary
       info('\n── Setup complete ──');
+      if (!inPath) {
+        warn('claude-env is not in your PATH.');
+        info('Install globally with:  npm install -g /path/to/claude-env');
+        info('Or from Git:  npm install -g git+ssh://git@github.com/on6qd/claude-env.git');
+      }
       if (!bins.sops || !bins.age) {
         info('Install sops + age to enable encrypted secrets.');
       }
