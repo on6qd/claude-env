@@ -9,8 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "preinstall": "node scripts/check-dist.js",
-    "prepare": "tsc"
+    "preinstall": "node scripts/check-dist.js"
   },
   "engines": {
     "node": ">=18"
