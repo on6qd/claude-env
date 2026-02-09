@@ -24,7 +24,7 @@ Requires Node >= 18. On this machine Node 22 lives at the default PATH location.
 
 ```
 src/
-  commands/   # CLI commands (init, apply, status, doctor, pull, push, sync, secret)
+  commands/   # CLI commands (init, apply, doctor, sync, secret)
   config/     # types.ts, loader.ts, resolver.ts — config loading & resolution
   util/       # log.ts, paths.ts, platform.ts, git.ts, sops.ts — shared helpers
   index.ts    # Entry point, registers commands with Commander
@@ -45,7 +45,7 @@ src/
 - **Single-pass variable expansion** — variables cannot reference other variables defined after them
 - **Platform map detection** — a value is treated as a platform map if it is an object with only `darwin`/`linux`/`win32` keys; keep this heuristic in mind when adding fields
 - **Age key** (`~/.claude-env-key.txt`) lives outside the repo and must be shared out-of-band
-- `apply` is display-only in v0.1 — does not yet patch `~/.claude.json`
+- **MCP server merge strategy** — `apply` only touches servers defined in `claude-env.yaml`; manually-added servers in `~/.claude.json` are left untouched. If a server name exists in both, claude-env wins.
 
 ## Tests
 

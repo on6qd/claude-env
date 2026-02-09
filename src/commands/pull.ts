@@ -1,11 +1,14 @@
-import { Command } from 'commander';
-import { git, hasRemote } from '../util/git.js';
+import { git, hasRemote, ensureSshRemote } from '../util/git.js';
 import { success, warn, die } from '../util/log.js';
 
 export async function pullAction(): Promise<void> {
   if (!(await hasRemote())) {
     die('No remote configured. Run: git -C ~/.claude remote add origin <url>');
   }
+
+  // Ensure SSH remote (convert HTTPS → SSH if needed)
+  const converted = await ensureSshRemote();
+  if (converted) success(`Switched remote to SSH: ${converted}`);
 
   try {
     await git('pull', '--rebase', '--autostash');
@@ -29,11 +32,4 @@ export async function pullAction(): Promise<void> {
     }
     die(`Pull failed: ${msg}`);
   }
-}
-
-export function registerPull(program: Command): void {
-  program
-    .command('pull')
-    .description('Pull latest config from remote (rebase)')
-    .action(pullAction);
 }

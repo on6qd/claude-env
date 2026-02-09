@@ -12,10 +12,7 @@ import { setQuiet } from './util/log.js';
 import { requireGit } from './util/deps.js';
 import { registerInit } from './commands/init.js';
 import { registerApply } from './commands/apply.js';
-import { registerStatus } from './commands/status.js';
 import { registerDoctor } from './commands/doctor.js';
-import { registerPull } from './commands/pull.js';
-import { registerPush } from './commands/push.js';
 import { registerSync } from './commands/sync.js';
 import { registerSecret } from './commands/secret.js';
 
@@ -37,10 +34,7 @@ program
 
 registerInit(program);
 registerApply(program);
-registerStatus(program);
 registerDoctor(program);
-registerPull(program);
-registerPush(program);
 registerSync(program);
 registerSecret(program);
 

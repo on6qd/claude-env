@@ -5,7 +5,7 @@ import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createInterface } from 'node:readline';
 import { CLAUDE_DIR, CONFIG_FILE, SECRETS_FILE, AGE_KEY_FILE } from '../util/paths.js';
-import { git, isGitRepo, hasRemote, isClean } from '../util/git.js';
+import { git, isGitRepo, hasRemote, isClean, ensureSshRemote, httpsToSsh } from '../util/git.js';
 import { checkSopsBinaries, getAgePublicKey } from '../util/sops.js';
 import { info, success, warn, error } from '../util/log.js';
 import { installHint } from '../util/deps.js';
@@ -131,16 +131,28 @@ export function registerInit(program: Command): void {
 
       // 3. Remote
       if (!(await hasRemote())) {
-        const remoteUrl = await ask('Remote URL for origin (or press Enter to skip): ');
+        let remoteUrl = await ask('Remote SSH URL for origin (or press Enter to skip): ');
         if (remoteUrl) {
+          // Convert HTTPS to SSH if user pasted an HTTPS URL
+          const converted = httpsToSsh(remoteUrl);
+          if (converted) {
+            info(`Converting HTTPS URL to SSH: ${converted}`);
+            remoteUrl = converted;
+          }
           await git('remote', 'add', 'origin', remoteUrl);
           success('Added remote origin');
         } else {
           warn('No remote configured. Run: git -C ~/.claude remote add origin <url>');
         }
       } else {
-        const { stdout: currentUrl } = await git('remote', 'get-url', 'origin');
-        info(`Remote origin: ${currentUrl.trim()}`);
+        // Convert existing HTTPS remote to SSH
+        const converted = await ensureSshRemote();
+        if (converted) {
+          success(`Switched remote origin to SSH: ${converted}`);
+        } else {
+          const { stdout: currentUrl } = await git('remote', 'get-url', 'origin');
+          info(`Remote origin: ${currentUrl.trim()}`);
+        }
       }
 
       // 4. Write .gitignore
