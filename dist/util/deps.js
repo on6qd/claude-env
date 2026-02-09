@@ -3,8 +3,9 @@ import { promisify } from 'node:util';
 import { die } from './log.js';
 const execFile = promisify(execFileCb);
 async function commandExists(cmd) {
+    const lookup = process.platform === 'win32' ? 'where' : 'which';
     try {
-        await execFile('which', [cmd]);
+        await execFile(lookup, [cmd]);
         return true;
     }
     catch {
